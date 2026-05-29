@@ -53,6 +53,7 @@ if (!process.env.VERCEL) {
     console.log(`Duty Checks Backend Admin Panel Server is running!`);
     console.log(`Port: ${PORT}`);
     console.log(`Health Check: http://localhost:${PORT}/health`);
+    console.log(`View Project: http://localhost:${PORT}/`);
     console.log(`====================================================`);
   });
 }

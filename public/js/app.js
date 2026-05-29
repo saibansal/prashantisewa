@@ -645,6 +645,13 @@ sidebarItems.forEach(item => {
       if (assignmentYearSelect) {
         if (activeSewaState && activeSewaStartDate && activeSewaEndDate) {
           const year = new Date(activeSewaStartDate).getFullYear().toString();
+          // Fallback to safely add the year if it wasn't populated yet
+          if (!Array.from(assignmentYearSelect.options).some(opt => opt.value === year)) {
+            const opt = document.createElement('option');
+            opt.value = year;
+            opt.textContent = year;
+            assignmentYearSelect.appendChild(opt);
+          }
           assignmentYearSelect.value = year;
           assignmentPlaceholder.style.display = 'none';
           assignmentsWorkspace.style.display = 'block';
@@ -2045,9 +2052,40 @@ async function fetchSewaPeriods() {
     if (res.ok) {
       allSewaPeriods = await res.json();
       renderSewaPeriods(allSewaPeriods);
+      populateAssignmentYearSelect();
     }
   } catch (error) {
     console.error('Fetch sewa periods error:', error);
+  }
+}
+
+function populateAssignmentYearSelect() {
+  if (!assignmentYearSelect) return;
+  
+  const currentValue = assignmentYearSelect.value;
+  const uniqueYears = new Set();
+  
+  allSewaPeriods.forEach(period => {
+    if (period.start_date) {
+      const year = new Date(period.start_date).getFullYear().toString();
+      uniqueYears.add(year);
+    }
+  });
+  
+  // Sort years in descending order (e.g., 2026, 2025, 2024...)
+  const sortedYears = Array.from(uniqueYears).sort((a, b) => b.localeCompare(a));
+  
+  assignmentYearSelect.innerHTML = '<option value="" disabled selected>-- Select Year --</option>';
+  
+  sortedYears.forEach(year => {
+    const opt = document.createElement('option');
+    opt.value = year;
+    opt.textContent = year;
+    assignmentYearSelect.appendChild(opt);
+  });
+  
+  if (currentValue && sortedYears.includes(currentValue)) {
+    assignmentYearSelect.value = currentValue;
   }
 }
 
