@@ -516,6 +516,16 @@ const logoutBtn = document.getElementById('logoutBtn');
 const sidebarItems = document.querySelectorAll('.sidebar-item[data-target]');
 const sectionContainers = document.querySelectorAll('.section-container');
 
+// General Assignment Elements
+const assignmentYearSelect = document.getElementById('assignmentYearSelect');
+const assignmentPlaceholder = document.getElementById('assignmentPlaceholder');
+const assignmentsWorkspace = document.getElementById('assignmentsWorkspace');
+const assignmentSewaBanner = document.getElementById('assignmentSewaBanner');
+const assignmentActiveState = document.getElementById('assignmentActiveState');
+const assignmentActiveStartDate = document.getElementById('assignmentActiveStartDate');
+const assignmentActiveEndDate = document.getElementById('assignmentActiveEndDate');
+const clearAssignmentSewaBtn = document.getElementById('clearAssignmentSewaBtn');
+
 // Toast Notification
 function showToast(message, type = 'success') {
   const container = document.getElementById('toastContainer');
@@ -1237,10 +1247,10 @@ if (assignmentStateSelect) {
   assignmentStateSelect.addEventListener('change', () => {
     selectedDistricts = [];
     selectedCities = [];
-    districtSelectedText.textContent = '-- Choose District(s) --';
-    citySelectedText.textContent = '-- Choose City/Cities --';
-    districtDropdown.innerHTML = '';
-    cityDropdown.innerHTML = '';
+    if (districtSelectedText) districtSelectedText.textContent = '-- Choose District(s) --';
+    if (citySelectedText) citySelectedText.textContent = '-- Choose City/Cities --';
+    if (districtDropdown) districtDropdown.innerHTML = '';
+    if (cityDropdown) cityDropdown.innerHTML = '';
     matchingUsersList.innerHTML = `
       <tr>
         <td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">
@@ -1253,25 +1263,29 @@ if (assignmentStateSelect) {
 }
 
 // Dropdown toggle logic
-districtToggle.addEventListener('click', (e) => {
-  e.stopPropagation();
-  districtDropdown.classList.toggle('active');
-  cityDropdown.classList.remove('active');
-});
+if (districtToggle) {
+  districtToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (districtDropdown) districtDropdown.classList.toggle('active');
+    if (cityDropdown) cityDropdown.classList.remove('active');
+  });
+}
 
-cityToggle.addEventListener('click', (e) => {
-  e.stopPropagation();
-  cityDropdown.classList.toggle('active');
-  districtDropdown.classList.remove('active');
-});
+if (cityToggle) {
+  cityToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (cityDropdown) cityDropdown.classList.toggle('active');
+    if (districtDropdown) districtDropdown.classList.remove('active');
+  });
+}
 
 document.addEventListener('click', () => {
-  districtDropdown.classList.remove('active');
-  cityDropdown.classList.remove('active');
+  if (districtDropdown) districtDropdown.classList.remove('active');
+  if (cityDropdown) cityDropdown.classList.remove('active');
 });
 
-districtDropdown.addEventListener('click', (e) => e.stopPropagation());
-cityDropdown.addEventListener('click', (e) => e.stopPropagation());
+if (districtDropdown) districtDropdown.addEventListener('click', (e) => e.stopPropagation());
+if (cityDropdown) cityDropdown.addEventListener('click', (e) => e.stopPropagation());
 
 // Populate District Dropdown
 function populateDistrictDropdown() {
@@ -1615,14 +1629,6 @@ async function removeAssignment(id) {
 }
 
 // ================= GENERAL ASSIGNMENTS YEAR FILTER LOGIC =================
-const assignmentYearSelect = document.getElementById('assignmentYearSelect');
-const assignmentPlaceholder = document.getElementById('assignmentPlaceholder');
-const assignmentsWorkspace = document.getElementById('assignmentsWorkspace');
-const assignmentSewaBanner = document.getElementById('assignmentSewaBanner');
-const assignmentActiveState = document.getElementById('assignmentActiveState');
-const assignmentActiveStartDate = document.getElementById('assignmentActiveStartDate');
-const assignmentActiveEndDate = document.getElementById('assignmentActiveEndDate');
-const clearAssignmentSewaBtn = document.getElementById('clearAssignmentSewaBtn');
 
 if (assignmentYearSelect) {
   assignmentYearSelect.addEventListener('change', function() {
@@ -2144,11 +2150,11 @@ async function deleteSewaPeriod(id) {
 
 function initializeSewaWorkspaceUI() {
   if (currentSewaState && currentSewaStartDate && currentSewaEndDate) {
-    sewaPlaceholder.style.display = 'none';
-    sewaWorkspace.style.display = 'block';
-    sewaActiveState.textContent = currentSewaState;
-    sewaActiveStartDate.textContent = currentSewaStartDate;
-    sewaActiveEndDate.textContent = currentSewaEndDate;
+    if (sewaPlaceholder) sewaPlaceholder.style.display = 'none';
+    if (sewaWorkspace) sewaWorkspace.style.display = 'block';
+    if (sewaActiveState) sewaActiveState.textContent = currentSewaState;
+    if (sewaActiveStartDate) sewaActiveStartDate.textContent = currentSewaStartDate;
+    if (sewaActiveEndDate) sewaActiveEndDate.textContent = currentSewaEndDate;
 
     // Populate Sewa Duty Points Dropdown
     populateSewaDutyPointsDropdown(allDutyPoints);
@@ -2159,8 +2165,8 @@ function initializeSewaWorkspaceUI() {
     // Render assignments matching this Sewa Batch
     filterAndRenderSewaAssignments();
   } else {
-    sewaPlaceholder.style.display = 'block';
-    sewaWorkspace.style.display = 'none';
+    if (sewaPlaceholder) sewaPlaceholder.style.display = 'block';
+    if (sewaWorkspace) sewaWorkspace.style.display = 'none';
   }
 }
 
@@ -2778,4 +2784,3 @@ if (document.readyState === 'loading') {
 } else {
   bootApp();
 }
-

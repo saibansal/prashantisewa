@@ -38,3 +38,7 @@ backend/uploads/*
 # System generated conversation directories / AI files
 .github/instructions/codacy.instructions.md
 .gemini/
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md
