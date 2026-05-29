@@ -46,11 +46,15 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`====================================================`);
-  console.log(`Duty Checks Backend Admin Panel Server is running!`);
-  console.log(`Port: ${PORT}`);
-  console.log(`Health Check: http://localhost:${PORT}/health`);
-  console.log(`====================================================`);
-});
+// Start Server (Only locally, Vercel will handle it in production)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`====================================================`);
+    console.log(`Duty Checks Backend Admin Panel Server is running!`);
+    console.log(`Port: ${PORT}`);
+    console.log(`Health Check: http://localhost:${PORT}/health`);
+    console.log(`====================================================`);
+  });
+}
+
+module.exports = app;

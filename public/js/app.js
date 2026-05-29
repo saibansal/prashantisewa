@@ -2171,56 +2171,60 @@ function initializeSewaWorkspaceUI() {
 }
 
 // Auto-calculate Releasing Date (7 days after start date)
-sewaStartDateInput.addEventListener('change', function() {
-  const startDateVal = this.value;
-  if (startDateVal) {
-    // Prevent selecting releasing date prior to start date
-    sewaEndDateInput.min = startDateVal;
+if (sewaStartDateInput) {
+  sewaStartDateInput.addEventListener('change', function() {
+    const startDateVal = this.value;
+    if (startDateVal) {
+      // Prevent selecting releasing date prior to start date
+      sewaEndDateInput.min = startDateVal;
 
-    const startDate = new Date(startDateVal);
-    startDate.setDate(startDate.getDate() + 7);
-    sewaEndDateInput.value = startDate.toISOString().split('T')[0];
-  } else {
-    sewaEndDateInput.min = '';
-  }
-});
+      const startDate = new Date(startDateVal);
+      startDate.setDate(startDate.getDate() + 7);
+      sewaEndDateInput.value = startDate.toISOString().split('T')[0];
+    } else {
+      sewaEndDateInput.min = '';
+    }
+  });
+}
 
 // Config form submission
-sewaConfigForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const state = sewaStateSelect.value;
-  const startDate = sewaStartDateInput.value;
-  const endDate = sewaEndDateInput.value;
+if (sewaConfigForm) {
+  sewaConfigForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const state = sewaStateSelect.value;
+    const startDate = sewaStartDateInput.value;
+    const endDate = sewaEndDateInput.value;
 
-  if (!state || !startDate || !endDate) {
-    showToast('Please fill all configuration fields', 'error');
-    return;
-  }
-
-  try {
-    showToast('Saving Sewa Period...', 'info');
-    const res = await fetch(`${API_BASE_URL}/sewa-periods`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${currentToken}`
-      },
-      body: JSON.stringify({ state, startDate, endDate })
-    });
-    const data = await res.json();
-
-    if (res.ok) {
-      showToast('Sewa period configured and saved successfully!', 'success');
-      sewaConfigForm.reset();
-      fetchSewaPeriods();
-    } else {
-      showToast(data.error || 'Failed to save Sewa period', 'error');
+    if (!state || !startDate || !endDate) {
+      showToast('Please fill all configuration fields', 'error');
+      return;
     }
-  } catch (error) {
-    console.error('Save sewa period error:', error);
-    showToast('Failed to connect to the backend server', 'error');
-  }
-});
+
+    try {
+      showToast('Saving Sewa Period...', 'info');
+      const res = await fetch(`${API_BASE_URL}/sewa-periods`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`
+        },
+        body: JSON.stringify({ state, startDate, endDate })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        showToast('Sewa period configured and saved successfully!', 'success');
+        sewaConfigForm.reset();
+        fetchSewaPeriods();
+      } else {
+        showToast(data.error || 'Failed to save Sewa period', 'error');
+      }
+    } catch (error) {
+      console.error('Save sewa period error:', error);
+      showToast('Failed to connect to the backend server', 'error');
+    }
+  });
+}
 
 // Clear Workspace context
 if (clearSewaWorkspaceBtn) {
@@ -2264,37 +2268,43 @@ if (sewaCityDropdown) sewaCityDropdown.addEventListener('click', (e) => e.stopPr
 
 // Populate Sewa Duty Points Dropdown
 function populateSewaDutyPointsDropdown(points) {
-  sewaAssignDutyPointSelect.innerHTML = '<option value="" disabled selected>-- Choose Duty Point --</option>';
-  points.forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = p.main_point;
-    sewaAssignDutyPointSelect.appendChild(opt);
-  });
-  sewaAssignSubPointSelect.innerHTML = '<option value="" disabled selected>-- Select Main Point First --</option>';
-  sewaAssignSubPointSelect.disabled = true;
-}
-
-sewaAssignDutyPointSelect.addEventListener('change', function() {
-  const pointId = this.value;
-  const selectedPoint = allDutyPoints.find(p => p.id === pointId);
-
-  if (selectedPoint && selectedPoint.sub_points.length > 0) {
-    sewaAssignSubPointSelect.disabled = false;
-    sewaAssignSubPointSelect.innerHTML = '<option value="" disabled selected>-- Choose Sub Point --</option>';
-    selectedPoint.sub_points.forEach(sub => {
-      const subName = sub.name || sub;
-      const subReq = sub.required_staff || 1;
+  if (sewaAssignDutyPointSelect) {
+    sewaAssignDutyPointSelect.innerHTML = '<option value="" disabled selected>-- Choose Duty Point --</option>';
+    points.forEach(p => {
       const opt = document.createElement('option');
-      opt.value = subName;
-      opt.textContent = `${subName} (Req: ${subReq})`;
-      sewaAssignSubPointSelect.appendChild(opt);
+      opt.value = p.id;
+      opt.textContent = p.main_point;
+      sewaAssignDutyPointSelect.appendChild(opt);
     });
-  } else {
-    sewaAssignSubPointSelect.innerHTML = '<option value="" disabled selected>-- No Sub-points configured --</option>';
+  }
+  if (sewaAssignSubPointSelect) {
+    sewaAssignSubPointSelect.innerHTML = '<option value="" disabled selected>-- Select Main Point First --</option>';
     sewaAssignSubPointSelect.disabled = true;
   }
-});
+}
+
+if (sewaAssignDutyPointSelect) {
+  sewaAssignDutyPointSelect.addEventListener('change', function() {
+    const pointId = this.value;
+    const selectedPoint = allDutyPoints.find(p => p.id === pointId);
+
+    if (selectedPoint && selectedPoint.sub_points.length > 0) {
+      sewaAssignSubPointSelect.disabled = false;
+      sewaAssignSubPointSelect.innerHTML = '<option value="" disabled selected>-- Choose Sub Point --</option>';
+      selectedPoint.sub_points.forEach(sub => {
+        const subName = sub.name || sub;
+        const subReq = sub.required_staff || 1;
+        const opt = document.createElement('option');
+        opt.value = subName;
+        opt.textContent = `${subName} (Req: ${subReq})`;
+        sewaAssignSubPointSelect.appendChild(opt);
+      });
+    } else {
+      sewaAssignSubPointSelect.innerHTML = '<option value="" disabled selected>-- No Sub-points configured --</option>';
+      sewaAssignSubPointSelect.disabled = true;
+    }
+  });
+}
 
 // Populate Sewa District Dropdown
 function populateSewaDistrictDropdown() {
