@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Duty Checks - Admin Panel</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- Ambient Gradient Background Mesh -->
+  <div class="bg-gradient-mesh"></div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- 1. LOGIN SCREEN (Hidden) -->
+  <div id="loginScreen" class="login-container" style="display: none;">
+    <div class="login-card">
+      <div class="login-logo">
+        <i data-lucide="shield-check" style="vertical-align: middle; margin-right: 8px;"></i>Sai Connect
+      </div>
+      <p class="login-subtitle">Duty Checks Admin Panel</p>
+      
+      <form id="loginForm">
+        <div class="form-group" style="text-align: left;">
+          <label for="loginId">Login ID</label>
+          <input type="text" id="loginId" placeholder="Enter admin username" required>
+        </div>
+        <div class="form-group" style="text-align: left;">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="Enter password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top: 10px;">
+          <span>Login Securely</span>
+          <i data-lucide="log-in" style="width: 18px; height: 18px;"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. DASHBOARD MAIN LAYOUT (Visible by default) -->
+  <div id="dashboardLayout" class="dashboard-layout" style="display: flex;">
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <i data-lucide="shield" style="color: var(--accent-purple); width: 28px; height: 28px;"></i>
+        <span>Sai Connect</span>
+      </div>
+      
+      <ul class="sidebar-menu">
+        <li class="sidebar-item active" data-target="usersSection">
+          <i data-lucide="users" style="width: 20px; height: 20px;"></i>
+          <span>Users</span>
+        </li>
+        <li class="sidebar-item" data-target="dutyPointsSection">
+          <i data-lucide="map-pin" style="width: 20px; height: 20px;"></i>
+          <span>Duty Points</span>
+        </li>
+        <li class="sidebar-item" data-target="sewaSchedulesSection">
+          <i data-lucide="calendar-days" style="width: 20px; height: 20px;"></i>
+          <span>Prashanti Sewa</span>
+        </li>
+        <li class="sidebar-item" data-target="assignmentsSection">
+          <i data-lucide="calendar-range" style="width: 20px; height: 20px;"></i>
+          <span>Assignments</span>
+        </li>
+        <li class="sidebar-item" data-target="registerAdminSection">
+          <i data-lucide="user-plus" style="width: 20px; height: 20px;"></i>
+          <span>Register Admin</span>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-item" id="logoutBtn" style="color: var(--accent-rose);">
+          <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
+          <span>Sign Out</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+      <!-- App Header -->
+      <header class="app-header">
+        <div class="welcome-section">
+          <h1 id="welcomeMessage">Welcome back, Admin</h1>
+          <p>Manage users, duty points, and duty schedules.</p>
+        </div>
+        <div class="admin-profile">
+          <div class="avatar-initials" id="adminAvatar">AD</div>
+          <span style="font-weight: 500;" id="adminUsername">admin</span>
+        </div>
+      </header>
+
+      <!-- ================= USERS SECTION ================= -->
+      <section id="usersSection" class="section-container active">
+        <div class="section-header">
+          <h2 class="section-title">User Registry</h2>
+          <button class="btn btn-primary" id="openAddUserModal">
+            <i data-lucide="user-plus" style="width: 18px; height: 18px;"></i>
+            <span>Add User</span>
+          </button>
+        </div>
+        
+        <!-- Search and statistics -->
+        <div class="card" style="padding: 16px 24px; margin-bottom: 24px;">
+          <div style="display: flex; gap: 16px; align-items: center; width: 100%;">
+            <i data-lucide="search" style="color: var(--text-muted); width: 20px; height: 20px;"></i>
+            <input type="text" id="userSearchInput" placeholder="Search by name, Sai Connect ID, city, or state..." style="border: none; background: transparent; padding: 4px 0;">
+          </div>
+        </div>
+
+        <div class="card" style="padding: 0; overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 80px;">Photo</th>
+                <th>Full Name</th>
+                <th>Sai Connect ID</th>
+                <th>Location</th>
+                <th>DOB</th>
+                <th>Joining Date</th>
+                <th>Zipcode</th>
+                <th style="text-align: center; width: 150px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <!-- ================= DUTY POINTS SECTION ================= -->
+      <section id="dutyPointsSection" class="section-container">
+        <div class="section-header">
+          <h2 class="section-title">Duty Points</h2>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: start;">
+          <!-- Add Duty Point Form -->
+          <div class="card">
+            <h3 style="font-size: 1.1rem; margin-bottom: 20px; font-weight: 600;">Create Duty Point</h3>
+            <form id="addDutyPointForm">
+              <div class="form-group">
+                <label for="mainPoint">Main Point Name</label>
+                <input type="text" id="mainPoint" placeholder="e.g. Main Gate A" required>
+              </div>
+              <div class="form-group">
+                <label>Sub Points</label>
+                <div style="display: grid; grid-template-columns: 3fr 1fr auto; gap: 8px; margin-bottom: 8px; font-weight: 500; font-size: 0.85rem; color: var(--text-secondary);">
+                  <div>Sub-point name</div>
+                  <div>Staff Req</div>
+                  <div></div>
+                </div>
+                <div id="subPointsList">
+                  <div class="sub-point-input-row" style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
+                    <input type="text" class="sub-point-input" placeholder="e.g. Entry Turnstile" style="flex-grow: 1;" required>
+                    <input type="number" class="sub-point-staff-req" min="1" value="1" placeholder="Req" style="width: 80px;" required>
+                    <button type="button" class="btn btn-danger remove-subpoint-btn" style="padding: 10px;" disabled>
+                      <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                    </button>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-block" id="addSubPointInputBtn" style="margin-top: 10px; font-size: 0.85rem; padding: 8px 16px;">
+                  <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+                  <span>Add Sub Point Row</span>
+                </button>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block" style="margin-top: 20px;">
+                <span>Save Duty Point</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Duty Points List -->
+          <div class="duty-grid" id="dutyGrid">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PRASHANTI SEWA SECTION ================= -->
+      <section id="sewaSchedulesSection" class="section-container">
+        <div class="section-header">
+          <h2 class="section-title">Prashanti Sewa Coordinator</h2>
+        </div>
+
+        <!-- Step 1: Batch Configuration Form -->
+        <div class="card" style="margin-bottom: 24px; max-width: 800px;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 16px; font-weight: 600;">Configure Sewa Period</h3>
+          <form id="sewaConfigForm" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
+            <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+              <label for="sewaStateSelect">Select State</label>
+              <select id="sewaStateSelect" required>
+                <option value="" disabled selected>-- Select State --</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+              <label for="sewaStartDateInput">Sewa Start Date</label>
+              <input type="date" id="sewaStartDateInput" required>
+            </div>
+            <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+              <label for="sewaEndDateInput">Releasing Date</label>
+              <input type="date" id="sewaEndDateInput" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="height: 46px;">
+              <span>Save Sewa</span>
+              <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Saved Sewa Periods Table Card -->
+        <div class="card" id="sewaPeriodsCard" style="margin-bottom: 24px; max-width: 800px;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 16px; font-weight: 600;">Configured Sewa Batches</h3>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>State</th>
+                  <th>Start Date</th>
+                  <th>Releasing Date</th>
+                  <th style="text-align: center; width: 250px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sewaPeriodsTableBody">
+                <!-- Configured Sewa batches populated dynamically -->
+                <tr>
+                  <td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">
+                    No configured Sewa periods found. Create one above.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+
+      </section>
+
+      <!-- ================= ASSIGNMENTS SECTION ================= -->
+      <section id="assignmentsSection" class="section-container">
+        <div class="section-header">
+          <h2 class="section-title">Duty Point Assignments</h2>
+        </div>
+
+        <!-- Year Selection Card -->
+        <div class="card" style="margin-bottom: 24px; max-width: 400px;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 12px; font-weight: 600;">Select Prashanti Year</h3>
+          <div class="form-group" style="margin-bottom: 0;">
+            <select id="assignmentYearSelect" required style="width: 100%;">
+              <option value="" disabled selected>-- Select Year --</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+              <option value="2028">2028</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Assignments Page Placeholder -->
+        <div class="card" id="assignmentPlaceholder" style="text-align: center; padding: 60px; color: var(--text-muted);">
+          <i data-lucide="calendar" style="width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5; color: var(--accent-purple);"></i>
+          <h3 style="color: var(--text-primary); margin-bottom: 8px;">No Year Selected</h3>
+          <p>Please select a Prashanti Year above to view and manage assignments.</p>
+        </div>
+
+        <!-- Assignments Workspace Grid (Hidden until year selected) -->
+        <div id="assignmentsWorkspace" style="display: none;">
+          <!-- Active sewa context banner in Assignments page -->
+          <div id="assignmentSewaBanner" style="display: none; background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%); border: 1px solid rgba(139, 92, 246, 0.2); padding: 16px 24px; border-radius: var(--border-radius); color: #f8fafc; font-size: 1rem; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div>
+              <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; display: block; margin-bottom: 4px;">Active Prashanti Sewa Context</span>
+              <strong style="color: var(--accent-purple); font-size: 1.1rem;" id="assignmentActiveState">State Name</strong> State Sewa | From <strong id="assignmentActiveStartDate">StartDate</strong> to <strong id="assignmentActiveEndDate">EndDate</strong>
+            </div>
+            <button type="button" class="btn btn-secondary" id="clearAssignmentSewaBtn" style="padding: 8px 16px; font-size: 0.85rem;">
+              <span>Reset to General Mode</span>
+            </button>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: start;">
+            <!-- Assignment Selector Form -->
+            <div class="card">
+              <h3 style="font-size: 1.1rem; margin-bottom: 20px; font-weight: 600;">Assign Staff</h3>
+              <form id="assignUserForm">
+                <!-- Step 1: Duty Point -->
+                <div class="form-group">
+                  <label for="assignDutyPointSelect">1. Select Main Point</label>
+                  <select id="assignDutyPointSelect" required>
+                    <option value="" disabled selected>-- Choose Duty Point --</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="assignSubPointSelect">2. Select Sub Point</label>
+                  <select id="assignSubPointSelect" required disabled>
+                    <option value="" disabled selected>-- Select Main Point First --</option>
+                  </select>
+                </div>
+
+                <!-- Step 2: Location filters (Reusable Modular Component) -->
+                <div id="assignmentsLocationComponentContainer"></div>
+
+                <!-- Step 3: Matching Users Table -->
+                <div class="form-group" style="margin-top: 24px;">
+                  <label>6. Matching Users List</label>
+                  <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: var(--border-radius); overflow: hidden; max-height: 250px; overflow-y: auto; margin-top: 8px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;" id="matchingUsersTable">
+                      <thead>
+                        <tr style="background: var(--bg-tertiary); text-align: left; border-bottom: 1px solid var(--glass-border);">
+                          <th style="padding: 8px 12px; width: 40px;">
+                            <input type="checkbox" id="selectAllMatchingUsers" checked style="width: 16px; height: 16px; accent-color: var(--accent-purple); cursor: pointer;">
+                          </th>
+                          <th style="padding: 8px 12px;">User</th>
+                          <th style="padding: 8px 12px; width: 60px;">Age</th>
+                          <th style="padding: 8px 12px;">District & City</th>
+                        </tr>
+                      </thead>
+                      <tbody id="matchingUsersList">
+                        <tr>
+                          <td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">
+                            Please configure location filters to see matching staff.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 24px;">
+                  <span>Assign Selected Staff to Duty</span>
+                  <i data-lucide="arrow-right-to-line" style="width: 16px; height: 16px;"></i>
+                </button>
+              </form>
+            </div>
+
+            <!-- Assignments Table -->
+            <div class="card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 16px; flex-wrap: wrap;">
+                <h3 style="font-size: 1.1rem; font-weight: 600; margin-right: auto;">Active Assignments</h3>
+                <button class="btn btn-danger" id="bulkUnassignBtn" style="padding: 8px 16px; font-size: 0.85rem; display: none;">
+                  <i data-lucide="trash-2" style="width: 14px; height: 14px; margin-right: 6px; vertical-align: middle;"></i>
+                  <span>Unassign Selected</span>
+                </button>
+                <input type="text" id="assignmentSearchInput" placeholder="Filter assignments..." style="width: 200px; padding: 8px 12px; font-size: 0.85rem; margin-bottom: 0;">
+              </div>
+              
+              <div class="table-responsive">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width: 40px; text-align: left;">
+                        <input type="checkbox" id="selectAllAssignments" style="width: 16px; height: 16px; accent-color: var(--accent-purple); cursor: pointer;">
+                      </th>
+                      <th>User</th>
+                      <th>Sai Connect ID</th>
+                      <th>Location</th>
+                      <th>Duty Details</th>
+                      <th>Assigned Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="assignmentsTableBody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= REGISTER ADMIN SECTION ================= -->
+      <section id="registerAdminSection" class="section-container">
+        <div class="section-header">
+          <h2 class="section-title">Admin Management</h2>
+        </div>
+
+        <div class="card" style="max-width: 500px;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 20px; font-weight: 600;">Register New Administrator</h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 24px;">
+            Create accounts for fellow team members to help moderate registrations and assign duty points.
+          </p>
+          <form id="registerAdminForm">
+            <div class="form-group">
+              <label for="newAdminLoginId">Login ID</label>
+              <input type="text" id="newAdminLoginId" placeholder="e.g. subadmin_john" required>
+            </div>
+            <div class="form-group">
+              <label for="newAdminPassword">Password</label>
+              <input type="password" id="newAdminPassword" placeholder="Minimum 6 characters" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
+              <span>Register Admin Account</span>
+            </button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ADD USER MODAL -->
+  <div id="addUserModal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" id="closeAddUserModal">&times;</button>
+      <h3 style="font-size: 1.3rem; margin-bottom: 24px; font-weight: 600;" id="userModalTitle">Add New User Profile</h3>
+
+      
+      <form id="addUserForm" enctype="multipart/form-data">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="userFullName">Full Name</label>
+            <input type="text" id="userFullName" placeholder="Enter Full Name" required>
+          </div>
+          <div class="form-group">
+            <label for="userSaiConnectId">Sai Connect ID</label>
+            <input type="text" id="userSaiConnectId" placeholder="e.g. SC-98214" required>
+          </div>
+        </div>
+
+        <!-- Reusable Location Selector Component Container -->
+        <div id="addUserLocationComponentContainer"></div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="userZipcode">Zipcode</label>
+            <input type="text" id="userZipcode" placeholder="6-digit Zipcode" required pattern="[0-9a-zA-Z\s\-]{4,10}">
+          </div>
+        </div>
+
+
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="userDob">Date of Birth</label>
+            <input type="date" id="userDob" required>
+          </div>
+          <div class="form-group">
+            <label for="userJoiningDate">Joining Date</label>
+            <input type="date" id="userJoiningDate" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Profile Photo</label>
+          <div class="file-upload-wrapper">
+            <i data-lucide="upload-cloud" style="width: 32px; height: 32px; color: var(--text-muted); margin-bottom: 8px;"></i>
+            <p style="font-size: 0.9rem; font-weight: 500; margin-bottom: 4px;">Drag and drop or click to upload</p>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">PNG, JPG, JPEG or WEBP (Max 5MB)</p>
+            <input type="file" id="userPhotoFile" class="file-upload-input" accept="image/*">
+            <img id="userPhotoPreview" class="file-upload-preview" src="#" alt="Preview">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px;">
+          <button type="button" class="btn btn-secondary" id="cancelAddUser">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <span>Register User</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- REASSIGN USER MODAL -->
+  <div id="reassignModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <button class="modal-close" id="closeReassignModal">&times;</button>
+      <h3 style="font-size: 1.3rem; margin-bottom: 20px; font-weight: 600;">Duty Assignment Alert</h3>
+      
+      <!-- Step 1: Warning Message & Choice -->
+      <div id="reassignWarningBlock" style="display: block;">
+        <div style="background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); padding: 16px; border-radius: var(--border-radius); color: #f8fafc; font-size: 0.95rem; margin-bottom: 16px; line-height: 1.5;">
+          <i data-lucide="alert-triangle" style="color: var(--accent-rose); width: 20px; height: 20px; vertical-align: middle; margin-right: 8px; display: inline-block;"></i>
+          <span>The following staff member(s) are already assigned:</span>
+        </div>
+
+        <div id="reassignWarningList" style="max-height: 200px; overflow-y: auto; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: var(--border-radius); padding: 8px 12px; margin-bottom: 24px; font-size: 0.9rem;">
+          <!-- Populated dynamically -->
+        </div>
+        
+        <button type="button" class="btn btn-secondary btn-block" id="closeReassignWarningBtn" style="width: 100%;">Cancel</button>
+      </div>
+
+      <!-- Step 2: Form (Hidden by default) -->
+      <form id="reassignForm" style="display: none;">
+        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--border-radius); border: 1px solid var(--glass-border); margin-bottom: 24px;">
+          <div style="font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">Reassigning Staff Member</div>
+          <div id="reassignSingleUserName" style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">John Doe</div>
+          
+          <div style="font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 4px;">Current Duty Point</div>
+          <div id="reassignSingleOldDuty" style="font-size: 0.9rem; color: var(--accent-rose); font-weight: 500;">Main Point - Sub Point</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="reassignNewMainPoint">New Main Point</label>
+            <select id="reassignNewMainPoint" required>
+              <option value="" disabled selected>-- Choose Duty Point --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="reassignNewSubPoint">New Sub Point</label>
+            <select id="reassignNewSubPoint" required disabled>
+              <option value="" disabled selected>-- Select Main Point First --</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px;">
+          <button type="button" class="btn btn-secondary" id="cancelReassign">Back to List</button>
+          <button type="submit" class="btn btn-primary">
+            <span>Reassign to New Duty</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/locations.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
+
