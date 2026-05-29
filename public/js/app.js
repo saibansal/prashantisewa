@@ -97,7 +97,7 @@ class LocationSelector {
         </select>
       </div>
       <div class="form-group">
-        <label>4. Filter by District(s)</label>
+        <label>4. Filter by District</label>
         <div class="multiselect-container">
           <div class="multiselect-selectBox location-district-toggle">
             <div class="multiselect-selected-text location-district-text">-- Choose District(s) --</div>
@@ -107,7 +107,7 @@ class LocationSelector {
         </div>
       </div>
       <div class="form-group">
-        <label>5. Filter by City/Cities</label>
+        <label>5. Filter by Cities</label>
         <div class="multiselect-container">
           <div class="multiselect-selectBox location-city-toggle">
             <div class="multiselect-selected-text location-city-text">-- Choose City/Cities --</div>
@@ -249,7 +249,8 @@ class LocationSelector {
       return;
     }
     
-    const uniqueDistricts = (locationData[this.selectedState] ? Object.keys(locationData[this.selectedState]) : []).sort();
+    const stateUsers = allUsers.filter(u => u.state === this.selectedState);
+    const uniqueDistricts = [...new Set(stateUsers.map(u => u.district).filter(Boolean))].sort();
     
     if (uniqueDistricts.length === 0) {
       this.districtDropdown.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.9rem;">No districts found</div>';
@@ -310,12 +311,8 @@ class LocationSelector {
       return;
     }
     
-    let uniqueCities = [];
-    this.selectedDistricts.forEach(dist => {
-      if (locationData[this.selectedState] && locationData[this.selectedState][dist]) {
-        uniqueCities = uniqueCities.concat(locationData[this.selectedState][dist]);
-      }
-    });
+    const filteredUsers = allUsers.filter(u => u.state === this.selectedState && this.selectedDistricts.includes(u.district));
+    let uniqueCities = filteredUsers.map(u => u.city).filter(Boolean);
     uniqueCities = [...new Set(uniqueCities)].sort();
     
     if (uniqueCities.length === 0) {
@@ -1296,6 +1293,7 @@ if (cityDropdown) cityDropdown.addEventListener('click', (e) => e.stopPropagatio
 
 // Populate District Dropdown
 function populateDistrictDropdown() {
+  if (!districtDropdown) return;
   const selectedState = activeSewaState || (assignmentStateSelect ? assignmentStateSelect.value : null);
   
   districtDropdown.innerHTML = '';
@@ -1604,9 +1602,14 @@ function renderAssignments(assignments) {
       </td>
       <td style="font-size: 0.85rem;">${assignedDate}</td>
       <td>
-        <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="removeAssignment('${assign.id}')">
-          <span>Unassign</span>
-        </button>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.8rem; color: var(--accent-blue); border-color: rgba(59, 130, 246, 0.2);" onclick="editAssignment('${assign.id}')" title="Edit Assignment">
+            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+          </button>
+          <button class="btn btn-danger" style="padding: 6px 10px; font-size: 0.8rem;" onclick="removeAssignment('${assign.id}')" title="Unassign">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+          </button>
+        </div>
       </td>
     `;
     assignmentsTableBody.appendChild(row);
@@ -1614,6 +1617,7 @@ function renderAssignments(assignments) {
     // Bind change listener to checkboxes
     row.querySelector('.assignment-row-checkbox').addEventListener('change', updateBulkUnassignButtonState);
   });
+  lucide.createIcons();
 }
 
 async function removeAssignment(id) {
@@ -1957,11 +1961,25 @@ const closeReassign = () => {
   reassignForm.style.display = 'none';
   reassigningUsers = [];
   activeReassignUser = null;
+  reassignMode = 'warning';
+  
+  const title = reassignModal.querySelector('h3');
+  if (title) title.textContent = 'Duty Assignment Alert';
+  
+  const submitBtn = reassignForm.querySelector('button[type="submit"] span');
+  if (submitBtn) submitBtn.textContent = 'Reassign to New Duty';
+  
+  const cancelBtn = document.getElementById('cancelReassign');
+  if (cancelBtn) cancelBtn.textContent = 'Back to List';
 };
 closeReassignModal.addEventListener('click', closeReassign);
 closeReassignWarningBtn.addEventListener('click', closeReassign);
 
 cancelReassign.addEventListener('click', () => {
+  if (reassignMode === 'edit') {
+    closeReassign();
+    return;
+  }
   reassignForm.reset();
   reassignNewSubPoint.disabled = true;
   reassignWarningBlock.style.display = 'block';
@@ -1977,69 +1995,126 @@ reassignForm.addEventListener('submit', async (e) => {
   const assignedSubPoint = reassignNewSubPoint.value;
   
   if (!activeReassignUser) return;
+
+  if (!dutyPointId || !assignedSubPoint) {
+    showToast('Please select both a main point and a sub-point', 'error');
+    return;
+  }
   
   try {
-    showToast(`Reassigning ${activeReassignUser.userName}...`, 'info');
+    const actionText = reassignMode === 'edit' ? 'Updating' : 'Reassigning';
+    showToast(`${actionText} ${activeReassignUser.userName}...`, 'info');
     
-    // 1. Delete old assignment
-    const delRes = await fetch(`${API_BASE_URL}/assignments/${activeReassignUser.id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${currentToken}` }
+    console.log('Reassign/Edit PUT request:', {
+      url: `${API_BASE_URL}/assignments/${activeReassignUser.id}`,
+      assignmentId: activeReassignUser.id,
+      dutyPointId,
+      assignedSubPoint,
+      mode: reassignMode
     });
-    
-    if (!delRes.ok) {
-      showToast('Failed to remove old assignment', 'error');
-      return;
-    }
-    
-    // 2. Create new assignment
-    const addRes = await fetch(`${API_BASE_URL}/assignments`, {
-      method: 'POST',
+
+    const res = await fetch(`${API_BASE_URL}/assignments/${activeReassignUser.id}`, {
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${currentToken}`
       },
       body: JSON.stringify({ 
-        userId: activeReassignUser.userId, 
         dutyPointId, 
-        assignedSubPoint,
-        sewaStartDate: activeReassignUser.sewa_start_date || null,
-        sewaEndDate: activeReassignUser.sewa_end_date || null,
-        sewaState: activeReassignUser.sewa_state || null
+        assignedSubPoint
       })
     });
     
-    if (addRes.ok) {
-      showToast(`Successfully reassigned ${activeReassignUser.userName} to new duty!`, 'success');
+    if (res.ok) {
+      showToast(`Successfully updated duty for ${activeReassignUser.userName}!`, 'success');
       
-      // Remove this user from the queue list
-      reassigningUsers = reassigningUsers.filter(u => u.userId !== activeReassignUser.userId);
-      activeReassignUser = null;
-      
-      if (reassigningUsers.length > 0) {
-        reassignForm.reset();
-        reassignNewSubPoint.disabled = true;
-        reassignWarningBlock.style.display = 'block';
-        reassignForm.style.display = 'none';
-        renderReassignWarningList();
-      } else {
+      if (reassignMode === 'edit') {
         closeReassign();
+      } else {
+        // Remove this user from the queue list
+        reassigningUsers = reassigningUsers.filter(u => u.userId !== activeReassignUser.userId);
+        activeReassignUser = null;
+        
+        if (reassigningUsers.length > 0) {
+          reassignForm.reset();
+          reassignNewSubPoint.disabled = true;
+          reassignWarningBlock.style.display = 'block';
+          reassignForm.style.display = 'none';
+          renderReassignWarningList();
+        } else {
+          closeReassign();
+        }
       }
       
-      populateDistrictDropdown();
-      assignUserForm.reset();
-      assignSubPointSelect.disabled = true;
-      assignSubPointSelect.innerHTML = '<option value="" disabled selected>-- Select Main Point First --</option>';
+      if (typeof populateDistrictDropdown !== 'undefined') populateDistrictDropdown();
+      if (assignUserForm) assignUserForm.reset();
+      if (assignSubPointSelect) {
+        assignSubPointSelect.disabled = true;
+        assignSubPointSelect.innerHTML = '<option value="" disabled selected>-- Select Main Point First --</option>';
+      }
       
       fetchAssignments();
     } else {
-      showToast('Failed to complete assignment', 'error');
+      let errMsg = 'Failed to complete assignment update';
+      try {
+        const errorData = await res.json();
+        errMsg = errorData.error || errMsg;
+      } catch (e) {
+        console.error('Could not parse error response');
+      }
+      showToast(errMsg, 'error');
     }
   } catch (error) {
-    console.error('Reassignment error:', error);
+    console.error('Reassignment/Edit error:', error);
     showToast('Failed to connect to the backend server', 'error');
   }
 });
+
+let reassignMode = 'warning';
+
+window.editAssignment = function(id) {
+  const assign = allAssignments.find(a => a.id === id);
+  if (!assign) return;
+
+  activeReassignUser = {
+    id: assign.id,
+    userId: assign.user_id,
+    userName: assign.user ? assign.user.full_name : 'Unknown User',
+    mainPoint: assign.duty_point ? assign.duty_point.main_point : 'Unknown Point',
+    subPoint: assign.assigned_sub_point
+  };
+
+  reassignMode = 'edit';
+
+  const title = reassignModal.querySelector('h3');
+  if (title) title.textContent = 'Edit Assignment';
+  
+  reassignWarningBlock.style.display = 'none';
+  reassignForm.style.display = 'block';
+
+  document.getElementById('reassignSingleUserName').textContent = activeReassignUser.userName;
+  document.getElementById('reassignSingleOldDuty').textContent = `${activeReassignUser.mainPoint} - ${activeReassignUser.subPoint}`;
+
+  reassignNewMainPoint.innerHTML = '<option value="" disabled selected>-- Choose Duty Point --</option>';
+  allDutyPoints.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.main_point;
+    reassignNewMainPoint.appendChild(opt);
+  });
+
+  reassignNewSubPoint.disabled = true;
+  reassignNewSubPoint.innerHTML = '<option value="" disabled selected>-- Select Main Point First --</option>';
+
+  const submitBtn = reassignForm.querySelector('button[type="submit"] span');
+  if (submitBtn) submitBtn.textContent = 'Save Changes';
+  
+  const cancelBtn = document.getElementById('cancelReassign');
+  if (cancelBtn) cancelBtn.textContent = 'Cancel';
+
+  reassignModal.classList.add('active');
+  lucide.createIcons();
+};
 
 
 // ================= PRASHANTI SEWA CO-ORDINATOR LOGIC =================
@@ -2134,12 +2209,13 @@ function renderSewaPeriods(periods) {
       activeSewaEndDate = p.end_date.split('T')[0];
 
       // Reset multiselect state variables and selections
-      selectedDistricts = [];
-      selectedCities = [];
-      districtSelectedText.textContent = '-- Choose District(s) --';
-      citySelectedText.textContent = '-- Choose City/Cities --';
-      districtDropdown.innerHTML = '';
-      cityDropdown.innerHTML = '';
+      if (assignmentsLocationSelector) {
+        assignmentsLocationSelector.reset();
+        const stateFilterGrp = assignmentsLocationSelector.container.querySelector('#assignmentStateFilterGroup');
+        if (stateFilterGrp) {
+          stateFilterGrp.style.display = 'none'; // Lock to the sewa state
+        }
+      }
 
       // Trigger redirect to assignments section
       const assignmentsTabItem = document.querySelector('.sidebar-item[data-target="assignmentsSection"]');

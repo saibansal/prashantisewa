@@ -86,6 +86,58 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT Update assignment
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { dutyPointId, assignedSubPoint } = req.body;
+
+    console.log('PUT /assignments/:id - params:', req.params.id, 'body:', JSON.stringify(req.body));
+
+    if (!dutyPointId || !assignedSubPoint) {
+      return res.status(400).json({ error: 'dutyPointId and assignedSubPoint are required' });
+    }
+
+    // First verify the assignment exists
+    const { data: existing, error: fetchError } = await supabase
+      .from('user_assignments')
+      .select('id')
+      .eq('id', req.params.id)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('Error looking up assignment:', fetchError);
+      return res.status(500).json({ error: fetchError.message });
+    }
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Assignment not found with the given ID' });
+    }
+
+    const { data, error } = await supabase
+      .from('user_assignments')
+      .update({
+        duty_point_id: dutyPointId,
+        assigned_sub_point: assignedSubPoint.trim()
+      })
+      .eq('id', req.params.id)
+      .select();
+
+    if (error) {
+      console.error('Supabase update error:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Assignment update returned no data' });
+    }
+
+    res.json({ message: 'Assignment updated successfully', assignment: data[0] });
+  } catch (error) {
+    console.error('Update assignment error:', error);
+    res.status(500).json({ error: error.message || 'Internal Server Error' });
+  }
+});
+
 // DELETE/Remove assignment
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
