@@ -1462,6 +1462,7 @@ assignDutyPointSelect.addEventListener('change', function() {
       const opt = document.createElement('option');
       opt.value = subName;
       opt.textContent = `${subName} (Req: ${subReq})`;
+      opt.dataset.requiredStaff = subReq;
       assignSubPointSelect.appendChild(opt);
     });
   } else {
@@ -1721,6 +1722,16 @@ assignUserForm.addEventListener('submit', async (e) => {
     return;
   }
   
+  const selectedOption = assignSubPointSelect.options[assignSubPointSelect.selectedIndex];
+  if (selectedOption) {
+    const requiredStaff = parseInt(selectedOption.dataset.requiredStaff || '1', 10);
+    const maxAllowed = (requiredStaff === 2) ? 3 : requiredStaff;
+    if (userIds.length > maxAllowed) {
+      alert(`${maxAllowed} is required and you have selected ${userIds.length} either unselect user deploy new`);
+      return;
+    }
+  }
+  
   // Check if any of the selected users are already assigned to a duty point during this Sewa context (or active period)
   const alreadyAssigned = [];
   userIds.forEach(userId => {
@@ -1854,24 +1865,42 @@ const reassignForm = document.getElementById('reassignForm');
 const reassignWarningBlock = document.getElementById('reassignWarningBlock');
 const reassignWarningText = document.getElementById('reassignWarningText');
 const closeReassignWarningBtn = document.getElementById('closeReassignWarningBtn');
+const reassignConfirmBlock = document.getElementById('reassignConfirmBlock');
+const reassignConfirmYes = document.getElementById('reassignConfirmYes');
+const reassignConfirmNo = document.getElementById('reassignConfirmNo');
 
 const reassignNewMainPoint = document.getElementById('reassignNewMainPoint');
 const reassignNewSubPoint = document.getElementById('reassignNewSubPoint');
 
 let reassigningUsers = [];
 let activeReassignUser = null;
+let reassignMode = 'warning'; // 'warning' | 'confirm' | 'form' | 'edit'
 
+// ---- Step 1: Show warning list of already-assigned users ----
 function openReassignModal(alreadyAssignedList) {
   reassigningUsers = alreadyAssignedList;
   activeReassignUser = null;
+  reassignMode = 'warning';
   
+  showReassignStep('warning');
   renderReassignWarningList();
-  
-  reassignWarningBlock.style.display = 'block';
-  reassignForm.style.display = 'none';
   
   reassignModal.classList.add('active');
   lucide.createIcons();
+}
+
+function showReassignStep(step) {
+  reassignWarningBlock.style.display = step === 'warning' ? 'block' : 'none';
+  reassignConfirmBlock.style.display = step === 'confirm' ? 'block' : 'none';
+  reassignForm.style.display = step === 'form' ? 'block' : 'none';
+  
+  // Update modal title based on step
+  const title = reassignModal.querySelector('h3');
+  if (title) {
+    if (step === 'warning') title.textContent = 'Duty Assignment Alert';
+    else if (step === 'confirm') title.textContent = 'Confirm Duty Change';
+    else if (step === 'form') title.textContent = 'Select New Duty Point';
+  }
 }
 
 function renderReassignWarningList() {
@@ -1885,7 +1914,7 @@ function renderReassignWarningList() {
   
   reassigningUsers.forEach((u, index) => {
     const row = document.createElement('div');
-    row.style.padding = '8px 0';
+    row.style.padding = '10px 0';
     row.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
     row.style.display = 'flex';
     row.style.justifyContent = 'space-between';
@@ -1894,27 +1923,55 @@ function renderReassignWarningList() {
     
     row.innerHTML = `
       <div style="flex-grow: 1;">
-        <span style="font-weight: 600; color: var(--text-primary); display: block;">${u.userName}</span>
-        <span style="color: var(--text-secondary); font-size: 0.85rem;">Currently: ${u.mainPoint} - ${u.subPoint}</span>
+        <span style="font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 2px;">${u.userName}</span>
+        <span style="color: var(--text-secondary); font-size: 0.82rem;">Currently: <strong style="color: var(--accent-rose);">${u.mainPoint} - ${u.subPoint}</strong></span>
       </div>
-      <button class="btn btn-primary reassign-single-btn" data-index="${index}" style="padding: 6px 12px; font-size: 0.8rem; background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-blue) 100%); flex-shrink: 0;">
+      <button class="btn btn-primary reassign-single-btn" data-index="${index}" style="padding: 6px 14px; font-size: 0.8rem; background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-blue) 100%); flex-shrink: 0; border-radius: 8px;">
+        <i data-lucide="repeat" style="width: 14px; height: 14px; margin-right: 4px;"></i>
         <span>Change</span>
       </button>
     `;
     warningList.appendChild(row);
     
     row.querySelector('.reassign-single-btn').addEventListener('click', () => {
-      startReassignment(u);
+      goToConfirmStep(u);
     });
   });
+  lucide.createIcons();
 }
 
-function startReassignment(userObj) {
+// ---- Step 2: Confirmation - "Do you want to change?" ----
+function goToConfirmStep(userObj) {
   activeReassignUser = userObj;
+  reassignMode = 'confirm';
   
-  document.getElementById('reassignSingleUserName').textContent = userObj.userName;
-  document.getElementById('reassignSingleOldDuty').textContent = `${userObj.mainPoint} - ${userObj.subPoint}`;
+  document.getElementById('reassignConfirmUserName').textContent = userObj.userName;
+  document.getElementById('reassignConfirmOldDuty').textContent = `${userObj.mainPoint} - ${userObj.subPoint}`;
   
+  showReassignStep('confirm');
+  lucide.createIcons();
+}
+
+reassignConfirmYes.addEventListener('click', () => {
+  // User confirmed - move to step 3 (duty selection form)
+  goToFormStep();
+});
+
+reassignConfirmNo.addEventListener('click', () => {
+  // Go back to the warning list
+  activeReassignUser = null;
+  reassignMode = 'warning';
+  showReassignStep('warning');
+});
+
+// ---- Step 3: Select new duty point form ----
+function goToFormStep() {
+  reassignMode = 'form';
+  
+  document.getElementById('reassignSingleUserName').textContent = activeReassignUser.userName;
+  document.getElementById('reassignSingleOldDuty').textContent = `${activeReassignUser.mainPoint} - ${activeReassignUser.subPoint}`;
+  
+  // Populate main points dropdown
   reassignNewMainPoint.innerHTML = '<option value="" disabled selected>-- Choose Duty Point --</option>';
   allDutyPoints.forEach(p => {
     const opt = document.createElement('option');
@@ -1926,12 +1983,11 @@ function startReassignment(userObj) {
   reassignNewSubPoint.innerHTML = '<option value="" disabled selected>-- Select Main Point First --</option>';
   reassignNewSubPoint.disabled = true;
   
-  reassignWarningBlock.style.display = 'none';
-  reassignForm.style.display = 'block';
-  
+  showReassignStep('form');
   lucide.createIcons();
 }
 
+// Sub-point population when main point changes
 reassignNewMainPoint.addEventListener('change', function() {
   const pointId = this.value;
   const selectedPoint = allDutyPoints.find(p => p.id === pointId);
@@ -1953,41 +2009,42 @@ reassignNewMainPoint.addEventListener('change', function() {
   }
 });
 
+// Close & reset modal
 const closeReassign = () => {
   reassignModal.classList.remove('active');
   reassignForm.reset();
   reassignNewSubPoint.disabled = true;
-  reassignWarningBlock.style.display = 'block';
-  reassignForm.style.display = 'none';
   reassigningUsers = [];
   activeReassignUser = null;
   reassignMode = 'warning';
-  
-  const title = reassignModal.querySelector('h3');
-  if (title) title.textContent = 'Duty Assignment Alert';
-  
-  const submitBtn = reassignForm.querySelector('button[type="submit"] span');
-  if (submitBtn) submitBtn.textContent = 'Reassign to New Duty';
-  
-  const cancelBtn = document.getElementById('cancelReassign');
-  if (cancelBtn) cancelBtn.textContent = 'Back to List';
+  showReassignStep('warning');
 };
 closeReassignModal.addEventListener('click', closeReassign);
 closeReassignWarningBtn.addEventListener('click', closeReassign);
 
+// Cancel/Back button in the form step
 cancelReassign.addEventListener('click', () => {
   if (reassignMode === 'edit') {
     closeReassign();
     return;
   }
+  // Go back to confirm step or warning list
   reassignForm.reset();
   reassignNewSubPoint.disabled = true;
-  reassignWarningBlock.style.display = 'block';
-  reassignForm.style.display = 'none';
-  activeReassignUser = null;
-  renderReassignWarningList();
+  
+  if (reassigningUsers.length > 1) {
+    // Multiple users - go back to list
+    activeReassignUser = null;
+    reassignMode = 'warning';
+    showReassignStep('warning');
+  } else {
+    // Single user - go back to confirm
+    reassignMode = 'confirm';
+    showReassignStep('confirm');
+  }
 });
 
+// ---- Form Submit: DELETE old assignment + POST new assignment ----
 reassignForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   
@@ -2002,35 +2059,65 @@ reassignForm.addEventListener('submit', async (e) => {
   }
   
   try {
-    const actionText = reassignMode === 'edit' ? 'Updating' : 'Reassigning';
+    const actionText = reassignMode === 'edit' ? 'Updating' : 'Changing duty for';
     showToast(`${actionText} ${activeReassignUser.userName}...`, 'info');
     
-    console.log('Reassign/Edit PUT request:', {
-      url: `${API_BASE_URL}/assignments/${activeReassignUser.id}`,
-      assignmentId: activeReassignUser.id,
-      dutyPointId,
-      assignedSubPoint,
-      mode: reassignMode
-    });
-
-    const res = await fetch(`${API_BASE_URL}/assignments/${activeReassignUser.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${currentToken}`
-      },
-      body: JSON.stringify({ 
-        dutyPointId, 
-        assignedSubPoint
-      })
-    });
-    
-    if (res.ok) {
-      showToast(`Successfully updated duty for ${activeReassignUser.userName}!`, 'success');
+    if (reassignMode === 'edit') {
+      // Edit mode: use PUT to update in place
+      const res = await fetch(`${API_BASE_URL}/assignments/${activeReassignUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`
+        },
+        body: JSON.stringify({ dutyPointId, assignedSubPoint })
+      });
       
-      if (reassignMode === 'edit') {
+      if (res.ok) {
+        showToast(`Successfully updated duty for ${activeReassignUser.userName}!`, 'success');
         closeReassign();
+        fetchAssignments();
       } else {
+        let errMsg = 'Failed to update assignment';
+        try { const d = await res.json(); errMsg = d.error || errMsg; } catch(e) {}
+        showToast(errMsg, 'error');
+      }
+    } else {
+      // Reassign mode: DELETE old + POST new to avoid unique constraint issues
+      // Step A: Delete the old assignment
+      const deleteRes = await fetch(`${API_BASE_URL}/assignments/${activeReassignUser.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${currentToken}` }
+      });
+      
+      if (!deleteRes.ok) {
+        showToast('Failed to remove old assignment', 'error');
+        return;
+      }
+      
+      // Step B: Create the new assignment
+      const bodyObj = {
+        userId: activeReassignUser.userId,
+        dutyPointId,
+        assignedSubPoint
+      };
+      // Carry over sewa period info if present
+      if (activeReassignUser.sewa_start_date) bodyObj.sewaStartDate = activeReassignUser.sewa_start_date;
+      if (activeReassignUser.sewa_end_date) bodyObj.sewaEndDate = activeReassignUser.sewa_end_date;
+      if (activeReassignUser.sewa_state) bodyObj.sewaState = activeReassignUser.sewa_state;
+      
+      const createRes = await fetch(`${API_BASE_URL}/assignments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`
+        },
+        body: JSON.stringify(bodyObj)
+      });
+      
+      if (createRes.ok) {
+        showToast(`Successfully changed duty for ${activeReassignUser.userName}!`, 'success');
+        
         // Remove this user from the queue list
         reassigningUsers = reassigningUsers.filter(u => u.userId !== activeReassignUser.userId);
         activeReassignUser = null;
@@ -2038,39 +2125,32 @@ reassignForm.addEventListener('submit', async (e) => {
         if (reassigningUsers.length > 0) {
           reassignForm.reset();
           reassignNewSubPoint.disabled = true;
-          reassignWarningBlock.style.display = 'block';
-          reassignForm.style.display = 'none';
+          reassignMode = 'warning';
+          showReassignStep('warning');
           renderReassignWarningList();
         } else {
           closeReassign();
         }
+        
+        fetchAssignments();
+      } else {
+        let errMsg = 'Failed to create new assignment';
+        try { const d = await createRes.json(); errMsg = d.error || errMsg; } catch(e) {}
+        showToast(errMsg, 'error');
       }
-      
-      if (typeof populateDistrictDropdown !== 'undefined') populateDistrictDropdown();
-      if (assignUserForm) assignUserForm.reset();
-      if (assignSubPointSelect) {
-        assignSubPointSelect.disabled = true;
-        assignSubPointSelect.innerHTML = '<option value="" disabled selected>-- Select Main Point First --</option>';
-      }
-      
-      fetchAssignments();
-    } else {
-      let errMsg = 'Failed to complete assignment update';
-      try {
-        const errorData = await res.json();
-        errMsg = errorData.error || errMsg;
-      } catch (e) {
-        console.error('Could not parse error response');
-      }
-      showToast(errMsg, 'error');
+    }
+    
+    // Reset assignment form UI
+    if (assignUserForm) assignUserForm.reset();
+    if (assignSubPointSelect) {
+      assignSubPointSelect.disabled = true;
+      assignSubPointSelect.innerHTML = '<option value="" disabled selected>-- Select Main Point First --</option>';
     }
   } catch (error) {
     console.error('Reassignment/Edit error:', error);
     showToast('Failed to connect to the backend server', 'error');
   }
 });
-
-let reassignMode = 'warning';
 
 window.editAssignment = function(id) {
   const assign = allAssignments.find(a => a.id === id);
@@ -2089,8 +2169,8 @@ window.editAssignment = function(id) {
   const title = reassignModal.querySelector('h3');
   if (title) title.textContent = 'Edit Assignment';
   
-  reassignWarningBlock.style.display = 'none';
-  reassignForm.style.display = 'block';
+  // Show only the form step (skip warning and confirm steps)
+  showReassignStep('form');
 
   document.getElementById('reassignSingleUserName').textContent = activeReassignUser.userName;
   document.getElementById('reassignSingleOldDuty').textContent = `${activeReassignUser.mainPoint} - ${activeReassignUser.subPoint}`;
@@ -2105,12 +2185,6 @@ window.editAssignment = function(id) {
 
   reassignNewSubPoint.disabled = true;
   reassignNewSubPoint.innerHTML = '<option value="" disabled selected>-- Select Main Point First --</option>';
-
-  const submitBtn = reassignForm.querySelector('button[type="submit"] span');
-  if (submitBtn) submitBtn.textContent = 'Save Changes';
-  
-  const cancelBtn = document.getElementById('cancelReassign');
-  if (cancelBtn) cancelBtn.textContent = 'Cancel';
 
   reassignModal.classList.add('active');
   lucide.createIcons();
@@ -2411,6 +2485,7 @@ if (sewaAssignDutyPointSelect) {
         const opt = document.createElement('option');
         opt.value = subName;
         opt.textContent = `${subName} (Req: ${subReq})`;
+        opt.dataset.requiredStaff = subReq;
         sewaAssignSubPointSelect.appendChild(opt);
       });
     } else {
@@ -2787,13 +2862,21 @@ if (sewaAssignUserForm) {
   
   const checkboxes = sewaMatchingUsersList.querySelectorAll('.sewa-matching-user-checkbox:checked');
   const userIds = Array.from(checkboxes).map(cb => cb.value);
-  
   if (userIds.length === 0) {
     showToast('Please select at least one staff member from the matching list', 'error');
     return;
   }
   
-  // Check if any of the selected users are already assigned to a duty point during this Sewa batch
+  const selectedOption = sewaAssignSubPointSelect.options[sewaAssignSubPointSelect.selectedIndex];
+  if (selectedOption) {
+    const requiredStaff = parseInt(selectedOption.dataset.requiredStaff || '1', 10);
+    const maxAllowed = (requiredStaff === 2) ? 3 : requiredStaff;
+    if (userIds.length > maxAllowed) {
+      alert(`${maxAllowed} is required and you have selected ${userIds.length} either unselect user deploy new`);
+      return;
+    }
+  }
+  
   const alreadyAssigned = [];
   userIds.forEach(userId => {
     const existing = allAssignments.find(a => 

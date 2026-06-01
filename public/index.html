@@ -295,6 +295,7 @@
                   <select id="assignSubPointSelect" required disabled>
                     <option value="" disabled selected>-- Select Main Point First --</option>
                   </select>
+                  <div id="subPointCapacityInfo" style="display: none; margin-top: 8px; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; line-height: 1.6;"></div>
                 </div>
 
                 <!-- Step 2: Location filters (Reusable Modular Component) -->
@@ -463,33 +464,59 @@
 
   <!-- REASSIGN USER MODAL -->
   <div id="reassignModal" class="modal">
-    <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" id="closeReassignModal">&times;</button>
       <h3 style="font-size: 1.3rem; margin-bottom: 20px; font-weight: 600;">Duty Assignment Alert</h3>
       
-      <!-- Step 1: Warning Message & Choice -->
+      <!-- Step 1: Warning List of already-assigned users -->
       <div id="reassignWarningBlock" style="display: block;">
         <div style="background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); padding: 16px; border-radius: var(--border-radius); color: #f8fafc; font-size: 0.95rem; margin-bottom: 16px; line-height: 1.5;">
           <i data-lucide="alert-triangle" style="color: var(--accent-rose); width: 20px; height: 20px; vertical-align: middle; margin-right: 8px; display: inline-block;"></i>
-          <span>The following staff member(s) are already assigned:</span>
+          <span>The following staff member(s) are already assigned to a duty:</span>
         </div>
 
-        <div id="reassignWarningList" style="max-height: 200px; overflow-y: auto; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: var(--border-radius); padding: 8px 12px; margin-bottom: 24px; font-size: 0.9rem;">
+        <div id="reassignWarningList" style="max-height: 250px; overflow-y: auto; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: var(--border-radius); padding: 8px 12px; margin-bottom: 24px; font-size: 0.9rem;">
           <!-- Populated dynamically -->
         </div>
         
         <button type="button" class="btn btn-secondary btn-block" id="closeReassignWarningBtn" style="width: 100%;">Cancel</button>
       </div>
 
-      <!-- Step 2: Form (Hidden by default) -->
+      <!-- Step 2: Confirmation - "Do you want to change?" -->
+      <div id="reassignConfirmBlock" style="display: none;">
+        <div style="background: var(--bg-tertiary); padding: 20px; border-radius: var(--border-radius); border: 1px solid var(--glass-border); margin-bottom: 20px; text-align: center;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(244, 63, 94, 0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
+            <i data-lucide="user-round-pen" style="color: var(--accent-rose); width: 28px; height: 28px;"></i>
+          </div>
+          <div id="reassignConfirmUserName" style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">User Name</div>
+          <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px;">is currently assigned to</div>
+          <div id="reassignConfirmOldDuty" style="font-size: 1rem; font-weight: 600; color: var(--accent-rose); padding: 8px 14px; background: rgba(244, 63, 94, 0.08); border-radius: 8px; display: inline-block; margin-top: 4px;">Main Point - Sub Point</div>
+        </div>
+
+        <div style="font-size: 0.95rem; color: var(--text-primary); text-align: center; margin-bottom: 24px; font-weight: 500;">
+          Do you want to change their duty point?
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button type="button" class="btn btn-secondary" id="reassignConfirmNo" style="flex: 1;">No, Cancel</button>
+          <button type="button" class="btn btn-primary" id="reassignConfirmYes" style="flex: 1; background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-blue) 100%);">
+            <i data-lucide="check" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+            <span>Yes, Change Duty</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Select New Duty Point Form -->
       <form id="reassignForm" style="display: none;">
-        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--border-radius); border: 1px solid var(--glass-border); margin-bottom: 24px;">
-          <div style="font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">Reassigning Staff Member</div>
+        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--border-radius); border: 1px solid var(--glass-border); margin-bottom: 20px;">
+          <div style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 6px;">Changing Duty For</div>
           <div id="reassignSingleUserName" style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">John Doe</div>
           
-          <div style="font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 4px;">Current Duty Point</div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 4px;">Current Duty</div>
           <div id="reassignSingleOldDuty" style="font-size: 0.9rem; color: var(--accent-rose); font-weight: 500;">Main Point - Sub Point</div>
         </div>
+
+        <div style="font-size: 0.85rem; color: var(--accent-green); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Select New Duty Point</div>
 
         <div class="form-row">
           <div class="form-group">
@@ -506,10 +533,11 @@
           </div>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px;">
-          <button type="button" class="btn btn-secondary" id="cancelReassign">Back to List</button>
-          <button type="submit" class="btn btn-primary">
-            <span>Reassign to New Duty</span>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px;">
+          <button type="button" class="btn btn-secondary" id="cancelReassign">Back</button>
+          <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-teal, #14b8a6) 100%);">
+            <i data-lucide="save" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+            <span>Confirm & Save</span>
           </button>
         </div>
       </form>
@@ -517,6 +545,6 @@
   </div>
 
   <script src="js/locations.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=2"></script>
 </body>
 </html>
