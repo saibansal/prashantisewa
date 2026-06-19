@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const supabase = require('../config/supabase');
+const { readLocalDb, writeLocalDb, generateUuid } = require('../config/localDb');
 const { authenticateToken } = require('./auth');
 
 // Configure Multer storage for profile photos
@@ -39,20 +39,16 @@ const upload = multer({
 // GET all users
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { data: users, error } = await supabase
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    res.json(users);
+    const data = readLocalDb();
+    const sortedUsers = [...data.users].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    res.json(sortedUsers);
   } catch (error) {
     console.error('Fetch users error:', error);
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
 
-// POST Add new user (with single photo upload)
+// POST Add new user
 router.post('/', authenticateToken, upload.single('photo'), async (req, res) => {
   try {
     const {
@@ -66,54 +62,44 @@ router.post('/', authenticateToken, upload.single('photo'), async (req, res) => 
       joiningDate
     } = req.body;
 
-    // Validate fields
     if (!fullName || !state || !district || !city || !zipcode || !saiConnectId || !dateOfBirth || !joiningDate) {
-      // Clean up uploaded file if validation fails
       if (req.file) {
         fs.unlinkSync(req.file.path);
       }
       return res.status(400).json({ error: 'All fields except photo are strictly required' });
     }
 
-    // Check if saiConnectId already exists
-    const { data: existingUser, error: checkError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('sai_connect_id', saiConnectId)
-      .maybeSingle();
+    const data = readLocalDb();
+    const existingUser = data.users.find(u => u.sai_connect_id === saiConnectId);
 
     if (existingUser) {
       if (req.file) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: 'Sai Connect ID already exists' });
     }
 
-    // Set up photo URL (relative to backend endpoint)
     let photoUrl = null;
     if (req.file) {
       photoUrl = `/uploads/${req.file.filename}`;
     }
 
-    // Insert user into Supabase
-    const { data, error } = await supabase
-      .from('users')
-      .insert([
-        {
-          full_name: fullName,
-          state,
-          district,
-          city,
-          zipcode,
-          sai_connect_id: saiConnectId,
-          photo_url: photoUrl,
-          date_of_birth: dateOfBirth,
-          joining_date: joiningDate
-        }
-      ])
-      .select();
+    const newUser = {
+      id: generateUuid(),
+      full_name: fullName,
+      state,
+      district,
+      city,
+      zipcode,
+      sai_connect_id: saiConnectId,
+      photo_url: photoUrl,
+      date_of_birth: dateOfBirth,
+      joining_date: joiningDate,
+      created_at: new Date().toISOString()
+    };
 
-    if (error) throw error;
+    data.users.push(newUser);
+    writeLocalDb(data);
 
-    res.status(201).json({ message: 'User added successfully', user: data[0] });
+    res.status(201).json({ message: 'User added successfully', user: newUser });
   } catch (error) {
     console.error('Add user error:', error);
     if (req.file && fs.existsSync(req.file.path)) {
@@ -138,28 +124,23 @@ router.put('/:id', authenticateToken, upload.single('photo'), async (req, res) =
       joiningDate
     } = req.body;
 
-    // Validate fields
     if (!fullName || !state || !district || !city || !zipcode || !saiConnectId || !dateOfBirth || !joiningDate) {
       if (req.file) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: 'All fields except photo are required' });
     }
 
-    // Retrieve current user to find old photo
-    const { data: user, error: fetchError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    const data = readLocalDb();
+    const userIndex = data.users.findIndex(u => u.id === userId);
 
-    if (fetchError || !user) {
+    if (userIndex === -1) {
       if (req.file) fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Process new photo
+    const user = data.users[userIndex];
+
     let photoUrl = user.photo_url;
     if (req.file) {
-      // Delete old photo locally if it existed
       if (user.photo_url) {
         const oldFileName = user.photo_url.replace('/uploads/', '');
         const oldFilePath = path.join(__dirname, '../../uploads', oldFileName);
@@ -170,26 +151,21 @@ router.put('/:id', authenticateToken, upload.single('photo'), async (req, res) =
       photoUrl = `/uploads/${req.file.filename}`;
     }
 
-    // Update in Supabase
-    const { data, error } = await supabase
-      .from('users')
-      .update({
-        full_name: fullName,
-        state,
-        district,
-        city,
-        zipcode,
-        sai_connect_id: saiConnectId,
-        photo_url: photoUrl,
-        date_of_birth: dateOfBirth,
-        joining_date: joiningDate
-      })
-      .eq('id', userId)
-      .select();
+    data.users[userIndex] = {
+      ...user,
+      full_name: fullName,
+      state,
+      district,
+      city,
+      zipcode,
+      sai_connect_id: saiConnectId,
+      photo_url: photoUrl,
+      date_of_birth: dateOfBirth,
+      joining_date: joiningDate
+    };
+    writeLocalDb(data);
 
-    if (error) throw error;
-
-    res.json({ message: 'User updated successfully', user: data[0] });
+    res.json({ message: 'User updated successfully', user: data[userIndex] });
   } catch (error) {
     console.error('Update user error:', error);
     if (req.file && fs.existsSync(req.file.path)) {
@@ -200,23 +176,16 @@ router.put('/:id', authenticateToken, upload.single('photo'), async (req, res) =
 });
 
 // DELETE User
-
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const userId = req.params.id;
-    
-    // Retrieve user to check photo path
-    const { data: user, error: fetchError } = await supabase
-      .from('users')
-      .select('photo_url')
-      .eq('id', userId)
-      .single();
+    const data = readLocalDb();
+    const user = data.users.find(u => u.id === userId);
 
-    if (fetchError || !user) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Delete photo locally if exists
     if (user.photo_url) {
       const fileName = user.photo_url.replace('/uploads/', '');
       const filePath = path.join(__dirname, '../../uploads', fileName);
@@ -225,13 +194,11 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       }
     }
 
-    // Delete user from Supabase
-    const { error: deleteError } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', userId);
-
-    if (deleteError) throw deleteError;
+    data.users = data.users.filter(u => u.id !== userId);
+    // Also cleanup assignments related to this user to avoid orphan constraint issues
+    data.user_assignments = data.user_assignments.filter(a => a.user_id !== userId);
+    
+    writeLocalDb(data);
 
     res.json({ message: 'User deleted successfully' });
   } catch (error) {

@@ -1,17 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const supabase = require('../config/supabase');
+const { readLocalDb, writeLocalDb, generateUuid } = require('../config/localDb');
 const { authenticateToken } = require('./auth');
 
 // GET all duty points
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { data: dutyPoints, error } = await supabase
-      .from('duty_points')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
+    const data = readLocalDb();
+    const dutyPoints = [...data.duty_points].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     res.json(dutyPoints);
   } catch (error) {
     console.error('Fetch duty points error:', error);
@@ -40,29 +36,24 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'At least one valid non-empty Sub Point with requirement is required' });
     }
 
-    const { data: existingPoint, error: checkError } = await supabase
-      .from('duty_points')
-      .select('id')
-      .eq('main_point', mainPoint.trim())
-      .maybeSingle();
+    const data = readLocalDb();
+    const existingPoint = data.duty_points.find(p => p.main_point.toLowerCase() === mainPoint.trim().toLowerCase());
 
     if (existingPoint) {
       return res.status(400).json({ error: 'Duty Point with this Main Point already exists' });
     }
 
-    const { data, error } = await supabase
-      .from('duty_points')
-      .insert([
-        {
-          main_point: mainPoint.trim(),
-          sub_points: cleanSubPoints
-        }
-      ])
-      .select();
+    const newPoint = {
+      id: generateUuid(),
+      main_point: mainPoint.trim(),
+      sub_points: cleanSubPoints,
+      created_at: new Date().toISOString()
+    };
 
-    if (error) throw error;
+    data.duty_points.push(newPoint);
+    writeLocalDb(data);
 
-    res.status(201).json({ message: 'Duty Point added successfully', dutyPoint: data[0] });
+    res.status(201).json({ message: 'Duty Point added successfully', dutyPoint: newPoint });
   } catch (error) {
     console.error('Add duty point error:', error);
     res.status(500).json({ error: error.message || 'Internal Server Error' });
@@ -90,29 +81,28 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'At least one valid non-empty Sub Point with requirement is required' });
     }
 
-    const { data: existingPoint, error: checkError } = await supabase
-      .from('duty_points')
-      .select('id')
-      .eq('main_point', mainPoint.trim())
-      .neq('id', req.params.id)
-      .maybeSingle();
+    const data = readLocalDb();
+    const existingPoint = data.duty_points.find(p => 
+      p.main_point.toLowerCase() === mainPoint.trim().toLowerCase() && p.id !== req.params.id
+    );
 
     if (existingPoint) {
       return res.status(400).json({ error: 'Another Duty Point with this Main Point already exists' });
     }
 
-    const { data, error } = await supabase
-      .from('duty_points')
-      .update({
-        main_point: mainPoint.trim(),
-        sub_points: cleanSubPoints
-      })
-      .eq('id', req.params.id)
-      .select();
+    const pointIndex = data.duty_points.findIndex(p => p.id === req.params.id);
+    if (pointIndex === -1) {
+      return res.status(404).json({ error: 'Duty Point not found' });
+    }
 
-    if (error) throw error;
+    data.duty_points[pointIndex] = {
+      ...data.duty_points[pointIndex],
+      main_point: mainPoint.trim(),
+      sub_points: cleanSubPoints
+    };
+    writeLocalDb(data);
 
-    res.json({ message: 'Duty Point updated successfully', dutyPoint: data[0] });
+    res.json({ message: 'Duty Point updated successfully', dutyPoint: data[pointIndex] });
   } catch (error) {
     console.error('Update duty point error:', error);
     res.status(500).json({ error: error.message || 'Internal Server Error' });
@@ -122,12 +112,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // DELETE Duty Point
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    const { error } = await supabase
-      .from('duty_points')
-      .delete()
-      .eq('id', req.params.id);
-
-    if (error) throw error;
+    const data = readLocalDb();
+    data.duty_points = data.duty_points.filter(p => p.id !== req.params.id);
+    writeLocalDb(data);
     res.json({ message: 'Duty Point deleted successfully' });
   } catch (error) {
     console.error('Delete duty point error:', error);

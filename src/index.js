@@ -9,12 +9,15 @@ const usersRouter = require('./routes/users');
 const dutyPointsRouter = require('./routes/dutyPoints');
 const assignmentsRouter = require('./routes/assignments');
 const sewaPeriodsRouter = require('./routes/sewaPeriods');
+const { initLocalDb, syncWithDatabase, readLocalDb } = require('./config/localDb');
+
+// Initialize the local JSON file on startup
+initLocalDb();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -24,11 +27,28 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 app.use('/uploads', express.static(uploadsDir));
-
 app.use(express.static(path.join(__dirname, '../public')));
 
-app.use('/api/auth', authRouter);
+// Sync and status routes
+app.post('/api/sync', async (req, res) => {
+  try {
+    await syncWithDatabase();
+    res.json({ success: true, message: 'Database synced successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Sync failed' });
+  }
+});
 
+app.get('/api/sync/status', (req, res) => {
+  try {
+    const data = readLocalDb();
+    res.json({ pendingChanges: !!data.pendingChanges });
+  } catch (error) {
+    res.json({ pendingChanges: false });
+  }
+});
+
+app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/duty-points', dutyPointsRouter);
 app.use('/api/assignments', assignmentsRouter);

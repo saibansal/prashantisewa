@@ -11,6 +11,6 @@ if (!supabaseUrl || !supabaseKey) {
   console.warn('WARNING: SUPABASE_URL or SUPABASE_KEY is missing from environment variables. Please check your .env file.');
 }
 
-const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseKey || 'placeholder');
+const supabase = createClient(supabaseUrl || 'https://zvokizlnpjspsglezxjo.supabase.co', supabaseKey || 'sb_publishable_BnAJczHuf_9utRb-i6VtQg_plgibyjg');
 
 module.exports = supabase;

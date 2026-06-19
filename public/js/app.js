@@ -547,10 +547,71 @@ function showToast(message, type = 'success') {
 }
 
 // Check Authentication status (Bypassed)
+// Check Authentication status (Bypassed)
 async function checkAuth() {
   showDashboard(currentAdmin);
 }
 
+// Sync Database UI Logic
+const syncDatabaseBtn = document.getElementById('syncDatabaseBtn');
+const syncIcon = document.getElementById('syncIcon');
+const syncText = document.getElementById('syncText');
+const syncIndicatorDot = document.getElementById('syncIndicatorDot');
+
+async function checkSyncStatus() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/sync/status`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.pendingChanges) {
+        syncIndicatorDot.style.display = 'block';
+      } else {
+        syncIndicatorDot.style.display = 'none';
+      }
+    }
+  } catch (error) {
+    console.error('Error checking sync status:', error);
+  }
+}
+
+if (syncDatabaseBtn) {
+  syncDatabaseBtn.addEventListener('click', async () => {
+    try {
+      syncText.textContent = 'Syncing...';
+      syncIcon.style.transform = 'rotate(360deg)';
+      syncDatabaseBtn.disabled = true;
+
+      const res = await fetch(`${API_BASE_URL}/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Database synced successfully!', 'success');
+        // Refresh local data to ensure total alignment
+        await Promise.all([
+          fetchUsers(),
+          fetchDutyPoints(),
+          fetchAssignments(),
+          fetchSewaPeriods()
+        ]);
+      } else {
+        showToast(data.error || 'Sync failed', 'error');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      showToast('Connection to server failed during sync', 'error');
+    } finally {
+      syncText.textContent = 'Sync with Database';
+      syncIcon.style.transform = 'rotate(0deg)';
+      syncDatabaseBtn.disabled = false;
+      await checkSyncStatus();
+    }
+  });
+}
 
 function showLogin() {
   loginScreen.style.display = 'flex';
@@ -575,6 +636,7 @@ function showDashboard(admin) {
   fetchDutyPoints();
   fetchAssignments();
   fetchSewaPeriods();
+  checkSyncStatus();
   
   // Refresh Lucide Icons
   lucide.createIcons();
@@ -956,9 +1018,15 @@ addUserForm.addEventListener('submit', async (e) => {
     const data = await res.json();
 
     if (res.ok) {
-      showToast(editingUserId ? 'User profile updated successfully!' : 'User profile registered successfully!', 'success');
-      closeModal();
+      showToast(editingUserId ? 'User updated successfully!' : 'User added successfully!', 'success');
+      addUserForm.reset();
+      userLocationSelector.reset();
+      document.getElementById('addUserSubmitBtn').innerHTML = '<span>Add Staff Member</span><i data-lucide="user-plus" style="width: 18px; height: 18px;"></i>';
+      lucide.createIcons();
+      editingUserId = null;
       fetchUsers();
+      checkSyncStatus();
+      closeModal();
     } else {
       showToast(data.error || 'Error saving user', 'error');
     }
