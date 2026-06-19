@@ -152,14 +152,18 @@
               </div>
               <div class="form-group">
                 <label>Sub Points</label>
-                <div style="display: grid; grid-template-columns: 3fr 1fr auto; gap: 8px; margin-bottom: 8px; font-weight: 500; font-size: 0.85rem; color: var(--text-secondary);">
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; font-weight: 500; font-size: 0.85rem; color: var(--text-secondary);">
                   <div>Sub-point name</div>
+                  <div>Start Age</div>
+                  <div>End Age</div>
                   <div>Staff Req</div>
                   <div></div>
                 </div>
                 <div id="subPointsList">
                   <div class="sub-point-input-row" style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
                     <input type="text" class="sub-point-input" placeholder="e.g. Entry Turnstile" style="flex-grow: 1;" required>
+                    <input type="number" class="sub-point-start-age" placeholder="Start Age" style="width: 80px;" required>
+                    <input type="number" class="sub-point-end-age" placeholder="End Age" style="width: 80px;" required>
                     <input type="number" class="sub-point-staff-req" min="1" value="1" placeholder="Req" style="width: 80px;" required>
                     <button type="button" class="btn btn-danger remove-subpoint-btn" style="padding: 10px;" disabled>
                       <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
