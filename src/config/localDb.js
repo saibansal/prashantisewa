@@ -3,7 +3,12 @@ const path = require('path');
 const crypto = require('crypto');
 const supabase = require('./supabase');
 
-const dbPath = path.join(__dirname, '../../local_db.json');
+// On Vercel serverless functions, the root filesystem is read-only.
+// We must write to '/tmp' which is the only writable directory.
+const isVercel = process.env.VERCEL || process.env.NOW_BUILDER;
+const dbPath = isVercel 
+  ? path.join('/tmp', 'local_db.json')
+  : path.join(__dirname, '../../local_db.json');
 
 // Initialize the local file if it doesn't exist
 async function initLocalDb() {
