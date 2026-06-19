@@ -12,6 +12,32 @@
       "date_of_birth": "1987-06-15",
       "joining_date": "2007-06-05",
       "created_at": "2026-06-19T09:53:26.300Z"
+    },
+    {
+      "id": "f712decf-d07a-4eb1-816f-2a438de9e947",
+      "full_name": "sdf",
+      "state": "Arunachal Pradesh",
+      "district": "Anjaw",
+      "city": "Hayuliang",
+      "zipcode": "123213",
+      "sai_connect_id": "123",
+      "photo_url": "/uploads/photo-1781864952495-633092953.jpeg",
+      "date_of_birth": "1979-12-06",
+      "joining_date": "2026-12-01",
+      "created_at": "2026-06-19T10:29:12.504Z"
+    },
+    {
+      "id": "81a4a95d-d643-4434-a67b-e96ec1a17ea3",
+      "full_name": "asdfasf",
+      "state": "Assam",
+      "district": "Bongaigaon",
+      "city": "Boitamari",
+      "zipcode": "123456",
+      "sai_connect_id": "5332432",
+      "photo_url": "/uploads/photo-1781865099912-738552660.jpeg",
+      "date_of_birth": "1987-06-15",
+      "joining_date": "2025-01-22",
+      "created_at": "2026-06-19T10:31:39.917Z"
     }
   ],
   "duty_points": [],
